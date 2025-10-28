@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tic‑Tac‑Toe (X‑O Game)</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#7dd3fc;
+      --xcolor:#f97316;
+      --ocolor:#60a5fa;
+      --muted:#94a3b8;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg,#041124 0%, #071828 100%);
+      color:#e6eef6;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      padding:24px;
+    }
+    .container{
+      width:100%;
+      max-width:720px;
+      background:rgba(255,255,255,0.03);
+      border-radius:12px;
+      padding:20px;
+      box-shadow:0 10px 30px rgba(2,6,23,0.7);
+    }
+    header{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:14px;
+    }
+    h1{font-size:20px;margin:0}
+    .controls{display:flex;gap:8px;align-items:center}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:inherit;cursor:pointer}
+    .btn:hover{transform:translateY(-1px)}
+    .board-wrap{display:flex;gap:18px;align-items:flex-start}
+    .board{
+      display:grid;
+      grid-template-columns:repeat(3,120px);
+      grid-template-rows:repeat(3,120px);
+      gap:8px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      padding:12px;
+      border-radius:12px;
+    }
+    .cell{
+      background:rgba(255,255,255,0.02);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:46px;
+      font-weight:700;
+      cursor:pointer;
+      user-select:none;
+      border-radius:8px;
+      transition:transform .08s ease, box-shadow .08s ease, background .12s;
+      box-shadow: inset 0 -6px 18px rgba(2,6,23,0.6);
+    }
+    .cell:hover{transform:translateY(-4px)}
+    .cell.x{color:var(--xcolor)}
+    .cell.o{color:var(--ocolor)}
+    .meta{
+      min-width:180px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding:8px 10px;
+    }
+    .status{font-size:14px;color:var(--muted)}
+    .scores{display:flex;gap:8px}
+    .score{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;text-align:center}
+    .score strong{display:block;font-size:18px}
+    .winner{margin-top:6px;padding:8px;border-radius:8px;background:linear-gradient(90deg, rgba(125,211,252,0.08), rgba(96,165,250,0.06));color:var(--accent)}
+    .highlight{box-shadow:0 6px 30px rgba(125,211,252,0.08);transform:scale(1.02)}
+    footer{margin-top:14px;font-size:13px;color:var(--muted)}
+    @media(max-width:640px){
+      .board{grid-template-columns:repeat(3,80px);grid-template-rows:repeat(3,80px)}
+      .cell{font-size:34px}
+      .board-wrap{flex-direction:column;align-items:center}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tic‑Tac‑Toe — X ↔ O</h1>
+      <div class="controls">
+        <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px">
+          <input id="mode" type="checkbox"> Single‑player (vs Computer)
+        </label>
+        <button id="restart" class="btn">Restart</button>
+        <button id="resetScores" class="btn">Reset Scores</button>
+      </div>
+    </header>
+
+    <div class="board-wrap">
+      <div class="board" id="board" aria-label="Tic Tac Toe board"></div>
+
+      <aside class="meta">
+        <div class="status" id="turn">Turn: <strong id="turnPlayer">X</strong></div>
+        <div class="scores">
+          <div class="score">
+            <div style="font-size:12px;color:var(--muted)">Player X</div>
+            <strong id="scoreX">0</strong>
+          </div>
+          <div class="score">
+            <div style="font-size:12px;color:var(--muted)">Player O</div>
+            <strong id="scoreO">0</strong>
+          </div>
+          <div class="score">
+            <div style="font-size:12px;color:var(--muted)">Ties</div>
+            <strong id="scoreT">0</strong>
+          </div>
+        </div>
+        <div class="winner" id="message" style="display:none"></div>
+        <div style="font-size:13px;color:var(--muted)">Click a cell to play. When single‑player is on, computer plays as O.</div>
+      </aside>
+    </div>
+
+    <footer>Made with ❤️ — Simple, responsive, and easy to extend.</footer>
+  </div>
+
+  <script>
+    // Game state
+    const boardEl = document.getElementById('board');
+    const turnPlayerEl = document.getElementById('turnPlayer');
+    const messageEl = document.getElementById('message');
+    const scoreXEl = document.getElementById('scoreX');
+    const scoreOEl = document.getElementById('scoreO');
+    const scoreTEl = document.getElementById('scoreT');
+    const restartBtn = document.getElementById('restart');
+    const resetScoresBtn = document.getElementById('resetScores');
+    const modeCheckbox = document.getElementById('mode');
+
+    let board = Array(9).fill(null); // null, 'X', 'O'
+    let current = 'X';
+    let scores = { X:0, O:0, T:0 };
+    let gameOver = false;
+
+    const winLines = [
+      [0,1,2],[3,4,5],[6,7,8], // rows
+      [0,3,6],[1,4,7],[2,5,8], // cols
+      [0,4,8],[2,4,6]
+    ];
+
+    function createBoard(){
+      boardEl.innerHTML = '';
+      for(let i=0;i<9;i++){
+        const cell = document.createElement('div');
+        cell.className='cell';
+        cell.dataset.index = i;
+        cell.setAttribute('role','button');
+        cell.setAttribute('aria-label',`cell ${i+1}`);
+        cell.addEventListener('click', onCellClick);
+        boardEl.appendChild(cell);
+      }
+    }
+
+    function onCellClick(e){
+      const idx = Number(e.currentTarget.dataset.index);
+      if(gameOver) return;
+      if(board[idx]) return;
+      makeMove(idx, current);
+      if(!gameOver && modeCheckbox.checked && current === 'O'){
+        // if single-player and it's now computer's turn, let it move
+        setTimeout(computerMove, 250);
+      }
+    }
+
+    function makeMove(idx, player){
+      board[idx] = player;
+      const cell = boardEl.querySelector(`[data-index='${idx}']`);
+      cell.textContent = player;
+      cell.classList.add(player.toLowerCase());
+      checkResult();
+      if(!gameOver){
+        current = (player === 'X') ? 'O' : 'X';
+        turnPlayerEl.textContent = current;
+        // if single-player and it's computer's turn, trigger it
+        if(modeCheckbox.checked && current === 'O'){
+          setTimeout(computerMove, 250);
+        }
+      }
+    }
+
+    function computerMove(){
+      if(gameOver) return;
+      // simple AI: if it can win, win; else if opponent can win next, block; else choose center; else random.
+      const empty = board.map((v,i)=> v?null:i).filter(v=>v!==null);
+      const idx = pickBestMove();
+      if(idx!==null) makeMove(idx,'O');
+    }
+
+    function pickBestMove(){
+      // Try to win
+      for(const i of availableIndices()){
+        const copy = board.slice(); copy[i]='O';
+        if(checkWin(copy,'O')) return i;
+      }
+      // Block X
+      for(const i of availableIndices()){
+        const copy = board.slice(); copy[i]='X';
+        if(checkWin(copy,'X')) return i;
+      }
+      // Take center
+      if(board[4] === null) return 4;
+      // Take a corner
+      const corners = [0,2,6,8].filter(i=>board[i]===null);
+      if(corners.length) return corners[Math.floor(Math.random()*corners.length)];
+      // Else random
+      const available = availableIndices();
+      if(available.length === 0) return null;
+      return available[Math.floor(Math.random()*available.length)];
+    }
+
+    function availableIndices(){
+      return board.map((v,i)=> v===null?i:null).filter(v=>v!==null);
+    }
+
+    function checkWin(bd, player){
+      return winLines.some(line => line.every(i => bd[i] === player));
+    }
+
+    function checkResult(){
+      // check for win
+      for(const line of winLines){
+        const [a,b,c] = line;
+        if(board[a] && board[a] === board[b] && board[b] === board[c]){
+          // winner
+          gameOver = true;
+          highlightLine(line);
+          announceWinner(board[a]);
+          return;
+        }
+      }
+      // check tie
+      if(board.every(cell => cell !== null)){
+        gameOver = true;
+        announceTie();
+      }
+    }
+
+    function highlightLine(line){
+      for(const i of line){
+        const c = boardEl.querySelector(`[data-index='${i}']`);
+        c.classList.add('highlight');
+      }
+    }
+
+    function announceWinner(player){
+      messageEl.style.display = 'block';
+      messageEl.textContent = `Player ${player} wins!`;
+      scores[player]++;
+      updateScores();
+      // flash winner color briefly
+      setTimeout(()=>{/* no-op: keeps message visible */}, 10);
+    }
+
+    function announceTie(){
+      messageEl.style.display = 'block';
+      messageEl.textContent = `It's a tie!`;
+      scores.T++;
+      updateScores();
+    }
+
+    function updateScores(){
+      scoreXEl.textContent = scores.X;
+      scoreOEl.textContent = scores.O;
+      scoreTEl.textContent = scores.T;
+    }
+
+    function restart(){
+      board = Array(9).fill(null);
+      current = 'X';
+      gameOver = false;
+      turnPlayerEl.textContent = current;
+      messageEl.style.display='none';
+      createBoard();
+    }
+
+    restartBtn.addEventListener('click', ()=>{
+      restart();
+      // If single-player and computer starts as O, do nothing; X always starts.
+    });
+
+    resetScoresBtn.addEventListener('click', ()=>{
+      scores = {X:0,O:0,T:0};
+      updateScores();
+    });
+
+    modeCheckbox.addEventListener('change', ()=>{
+      // When toggling modes, restart the board so expectations are clear
+      restart();
+    });
+
+    // init
+    createBoard();
+    updateScores();
+
+    // Accessibility: allow keyboard play (1-9 keys)
+    window.addEventListener('keydown', (e)=>{
+      if(gameOver) return;
+      if(e.key>='1' && e.key<='9'){
+        const idx = Number(e.key)-1;
+        if(!board[idx]) makeMove(idx, current);
+      }
+    });
+  </script>
+</body>
+</html>
